@@ -682,7 +682,6 @@ class _Dot11MacField(MACField):
             return "%s (%s)" % (s, meaning)
         return s
 
-
 # 802.11-2016 9.2.4.1.1
 class Dot11(Packet):
     name = "802.11"
@@ -838,6 +837,10 @@ capability_list = ["res8", "res9", "short-slot", "res11",
                    "res12", "DSSS-OFDM", "res14", "res15",
                    "ESS", "IBSS", "CFP", "CFP-req",
                    "privacy", "short-preamble", "PBCC", "agility"]
+
+capability_list_s1g = capability_list
+# Update bit B6 for S1G
+capability_list_s1g[14] = "TSF-rollover"
 
 reason_code = {0: "reserved", 1: "unspec", 2: "auth-expired",
                3: "deauth-ST-leaving",
@@ -1559,7 +1562,7 @@ class Dot11Beacon(_Dot11EltUtils):
     name = "802.11 Beacon"
     fields_desc = [LELongField("timestamp", 0),
                    LEShortField("beacon_interval", 0x0064),
-                   FlagsField("cap", 0, 16, capability_list)]
+                   FlagsField("cap", 0, 16, capability_list_s1g)]
 
 
 class Dot11ATIM(Packet):
