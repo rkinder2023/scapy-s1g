@@ -973,7 +973,11 @@ _dot11_info_elts_ids = {
     127: "Extended Capabilities",
     191: "VHT Capabilities",
     192: "VHT Operation",
-    221: "Vendor Specific"
+    213: "S1G Beacon Compatibility",
+    214: "Short Beacon Interval",
+    217: "S1G Capabilities",
+    221: "Vendor Specific",
+    232: "S1G Operation"
 }
 
 # Backward compatibility
@@ -1506,6 +1510,42 @@ class Dot11EltVHTOperation(Dot11Elt):
             BitField('SS', 0x00, size=2),
             count_from=lambda x: 8
         )
+    ]
+
+class Dot11EltS1GBeaconCompatibility(Dot11Elt):
+    name = "802.11 S1G Beacon Compatibility Element"
+    fields_desc = [
+        ByteEnumField("ID", 213, _dot11_id_enum),
+        ByteField("len", 8),
+        FlagsField("cap", 0, 16, capability_list),
+        LEShortField("beacon_interval", 0x64),
+        LEIntField("tsf_completion", 0)
+    ]
+
+class Dot11EltShortBeaconInterval(Dot11Elt):
+    name = "802.11 S1G Short Beacon Interval Element"
+    fields_desc = [
+        ByteEnumField("ID", 214, _dot11_id_enum),
+        ByteField("len", 8),
+        LEShortField("short_beacon_interval", 0)
+    ]
+
+class Dot11EltS1GCapabilities(Dot11Elt):
+    name = "802.11 S1G Capabilities Element"
+    fields_desc = [
+        ByteEnumField("ID", 217, _dot11_id_enum),
+        ByteField("len", 15),
+        StrFixedLenField("S1G_capabilities_information", 0, length=10),
+        StrFixedLenField("Supported_mcs_nss", 0, length=5)
+    ]
+
+class Dot11EltS1GOperation(Dot11Elt):
+    name = "802.11 S1G Operation Element"
+    fields_desc = [
+        ByteEnumField("ID", 232, _dot11_id_enum),
+        ByteField("len", 6),
+        StrFixedLenField("S1G_op_info", 0, length=4),
+        StrFixedLenField("Basic_mcs_nss", 0, length=2),
     ]
 
 
