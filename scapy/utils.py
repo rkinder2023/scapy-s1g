@@ -1427,12 +1427,14 @@ class PcapReader_metaclass(type):
         """Open (if necessary) filename, and read the magic."""
         if isinstance(fname, str):
             filename = fname
-            try:
-                fdesc = gzip.open(filename, "rb")  # type: _ByteStream
-                magic = fdesc.read(4)
-            except IOError:
-                fdesc = open(filename, "rb")
-                magic = fdesc.read(4)
+            fdesc = open(filename, "rb")  # type: _ByteStream
+            magic = fdesc.read(2)
+            if magic == b"\x1f\x8b":
+                # GZIP header detected.
+                fdesc.seek(0)
+                fdesc = gzip.GzipFile(fileobj=fdesc)
+                magic = fdesc.read(2)
+            magic += fdesc.read(2)
         else:
             fdesc = fname
             filename = getattr(fdesc, "name", "No name")
@@ -1558,8 +1560,10 @@ class RawPcapReader(metaclass=PcapReader_metaclass):
         return -1 if WINDOWS else self.f.fileno()
 
     def close(self):
-        # type: () -> Optional[Any]
-        return self.f.close()
+        # type: () -> None
+        if isinstance(self.f, gzip.GzipFile):
+            self.f.fileobj.close()  # type: ignore
+        self.f.close()
 
     def __exit__(self, exc_type, exc_value, tracback):
         # type: (Optional[Any], Optional[Any], Optional[Any]) -> None
@@ -1876,7 +1880,12 @@ class RawPcapNgReader(RawPcapReader):
         process_information = {}
         for code, value in options.items():
             if code in [0x8001, 0x8003]:  # PCAPNG_EPB_PIB_INDEX, PCAPNG_EPB_E_PIB_INDEX
-                proc_index = struct.unpack(self.endian + "I", value)[0]
+                try:
+                    proc_index = struct.unpack(self.endian + "I", value)[0]
+                except struct.error:
+                    warning("PcapNg: EPB invalid proc index"
+                            "(expected 4 bytes, got %d) !" % len(value))
+                    raise EOFError
                 if proc_index < len(self.process_information):
                     key = "proc" if code == 0x8001 else "eproc"
                     process_information[key] = self.process_information[proc_index]
