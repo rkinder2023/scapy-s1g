@@ -682,6 +682,7 @@ class _Dot11MacField(MACField):
             return "%s (%s)" % (s, meaning)
         return s
 
+
 # 802.11-2020 9.2.4.1.1
 class Dot11(Packet):
     name = "802.11"
