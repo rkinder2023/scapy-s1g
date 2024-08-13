@@ -254,6 +254,13 @@ class RadioTapExtendedPresenceMask(Packet):
         return conf.padding_layer
 
 
+def _next_radiotap_tlv(pkt, lst, cur, s):
+    """Generates the next RadioTapTLV"""
+    if cur is None or (cur.parent.pre_parse_len - len(s) != cur.parent.len):
+        return RadioTapTLV
+
+    return None
+
 # This is still unimplemented in Wireshark
 # https://www.radiotap.org/fields/TLV.html
 class RadioTapTLV(Packet):
@@ -278,7 +285,10 @@ class RadioTapTLV(Packet):
         ),
         StrLenField("data", b"",
                     length_from=lambda pkt: pkt.length),
-        StrLenField("pad", None, length_from=lambda pkt: -pkt.length % 4)
+        ConditionalField(
+            StrLenField("pad", None, length_from=lambda pkt: -pkt.length % 4),
+            lambda pkt: pkt.type != 32
+        )
     ]
 
     def post_build(self, pkt, pay):
@@ -540,7 +550,7 @@ class RadioTap(Packet):
         # TLV fields
         ConditionalField(
             ReversePadField(
-                PacketListField("tlvs", [], RadioTapTLV),
+                PacketListField("tlvs", [], next_cls_cb=_next_radiotap_tlv),
                 4
             ),
             lambda pkt: pkt.present and pkt.present.TLV,
@@ -553,6 +563,12 @@ class RadioTap(Packet):
         if self.present and self.present.Flags and self.Flags.FCS:
             return Dot11FCS
         return Dot11
+
+    def do_dissect(self, s):
+        # Don't like this... but needed for TLV termination condition
+        self.pre_parse_len = len(s)
+        s = super().do_dissect(s)
+        return s
 
     def post_dissect(self, s):
         length = max(self.len - len(self.original) + len(s), 0)
